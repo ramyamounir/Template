@@ -5,14 +5,20 @@ import torchvision.transforms as T
 
 import joblib
 from torch.utils.data import Dataset, DataLoader
-from lib.core.config import MNIST_PATH
+from lib.core.config import DATA_PATH
 
 
-class MNIST(Dataset):
+class DatasetGenerator(Dataset):
 
-	def __init__(self):
+	def __init__(self, cfg, split):
 
-		data = joblib.load('{}mnist.pkl'.format(MNIST_PATH))
+		data = joblib.load('{}/{}/mnist.pkl'.format(DATA_PATH, cfg.DATASET))
+
+		if split == 'train':
+			data = data['train']
+		elif split == 'valid':
+			data = data['valid']
+
 		self.len = len(data)
 
 	def __getitem__(self, index):
@@ -25,10 +31,16 @@ class MNIST(Dataset):
 
 def get_loader(cfg):
 
-	loader = DataLoader(dataset=DatasetGenerator(), 
+	train_loader = DataLoader(dataset=DatasetGenerator(cfg, split = 'train' ), 
 							shuffle = cfg.TRAIN.SHUFFLE, 
 							batch_size=cfg.TRAIN.BATCH_PER_GPU*cfg.GPU_COUNT, 
 							num_workers= cfg.TRAIN.NUM_WORKERS
 						)
 
-	return loader
+	valid_loader = DataLoader(dataset=DatasetGenerator(cfg, split = 'valid'), 
+							shuffle = cfg.TRAIN.SHUFFLE, 
+							batch_size=cfg.TRAIN.BATCH_PER_GPU*cfg.GPU_COUNT, 
+							num_workers= cfg.TRAIN.NUM_WORKERS
+						)
+
+	return (train_loader, valid_loader)

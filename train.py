@@ -1,31 +1,38 @@
 from lib.core.config import parse_args
 from lib.utils.tensorboard import get_writer
-from lib.datasets.mnist import get_loader as mnist_loader
-from lib.models.predictor import Model
+from lib.datasets.mnist import get_loader
+from lib.models.predictor import get_model
 from lib.core.loss import get_loss
+from lib.core.accuracy import get_accuracy
 from lib.core.optimizer import get_optimizer
+from lib.core.scheduler import get_scheduler
 from lib.core.trainer import Trainer
 
 
-def main(cfg):
-	
-	# === DATA === #
-	loader = mnist_loader(cfg)
+# === Args === #
+cfg = parse_args()
 
-	# === MODEL === #
-	model = Model(cfg.MODEL)
+# === TB === #
+writer = get_writer(cfg)
 
-	# === LOSS === #
-	loss = get_loss(cfg.LOSS)
+# === DATA === #
+loader = get_loader(cfg)
 
-	# === OPTIMIZER === #
-	optimizer = get_optimizer(cfg.OPTIMIZER)
+# === MODEL === #
+model = get_model(cfg)
 
-	# === TRAINING === #
-	Trainer().fit()
+# === LOSS === #
+loss = get_loss(cfg)
 
-if __name__ == '__main__':
+# === ACCURACY === #
+accuracy = get_accuracy(cfg)
 
-	cfg = parse_args()
-	writer = get_writer(cfg)
-	main(cfg)
+# === OPTIMIZER === #
+optimizer = get_optimizer(model, cfg)
+
+# === SCHEDULER === #
+scheduler = get_scheduler(optimizer, cfg)
+
+# === TRAINING === #
+Trainer(cfg, writer, loader, model, loss, accuracy, optimizer, scheduler).fit()
+
