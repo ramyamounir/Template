@@ -1,6 +1,7 @@
 import torch
 from lib.core.config import SAVE_PATH
 from lib.utils.file import checkdir
+from tqdm import tqdm
 
 class Trainer:
 
@@ -78,9 +79,10 @@ class Trainer:
 	def fit(self):
 
 		# === training loop === #
-		for epoch in range(self.cfg.TRAIN.NUM_EPOCHS):
+		for epoch in tqdm(range(self.cfg.TRAIN.NUM_EPOCHS)):
 			train_loss, train_acc = self.train()
 			valid_loss, valid_acc = self.validate()
+
 
 			# === save model === #
 			if epoch%self.cfg.TRAIN.SAVE_EVERY == 0:
