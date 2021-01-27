@@ -12,12 +12,14 @@ cfg.OUT_DIR = 'out'
 cfg.GPU_COUNT = 0
 cfg.DEV = 'cuda'
 cfg.START_TB = False
-cfg.DATASET = 'mnist'
+cfg.DATASET = 'cifar'
 
 cfg.TRAIN = CN()
 cfg.TRAIN.BATCH_PER_GPU = 16
 cfg.TRAIN.NUM_WORKERS = 4
 cfg.TRAIN.SHUFFLE = True
+cfg.TRAIN.NUM_EPOCHS = 1000
+cfg.TRAIN.SAVE_EVERY = 10
 
 cfg.LOSS = CN()
 cfg.LOSS.REDUCE = 'mean'

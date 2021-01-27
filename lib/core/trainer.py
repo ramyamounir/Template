@@ -1,5 +1,6 @@
 import torch
 from lib.core.config import SAVE_PATH
+from lib.utils.file import checkdir
 
 class Trainer:
 
@@ -14,6 +15,8 @@ class Trainer:
 		self.scheduler = scheduler
 		self.cfg = cfg
 
+		checkdir("{}/weights/{}/".format(SAVE_PATH, self.cfg.MODEL_NAME))
+
 	def validate(self):
 
 		LOSS, ACC = 0, 0
@@ -23,8 +26,8 @@ class Trainer:
 			with torch.no_grad():
 
 				# === Forward pass === #
-				preds = self.model(input_data.to(cfg.DEV))
-				lbls = label_data.to(cfg.DEV)
+				preds = self.model(input_data.to(self.cfg.DEV))
+				lbls = label_data.to(self.cfg.DEV)
 
 				# === Loss === #
 				loss = self.loss(preds, lbls)
@@ -35,8 +38,9 @@ class Trainer:
 					acc = self.accuracy(preds, lbls)
 					ACC += acc
 
-		valid_loss = LOSS/len(valid_gen)
-		valid_acc = ACC/len(valid_gen)
+		valid_loss = LOSS/len(self.valid_gen)
+		valid_acc = ACC/len(self.valid_gen)
+
 		self.scheduler.step(valid_loss)
 
 		return valid_loss, valid_acc
@@ -48,8 +52,8 @@ class Trainer:
 		for input_data, label_data in self.train_gen:
 
 			# === Forward pass === #
-			preds = self.model(input_data.to(cfg.DEV))
-			lbls = label_data.to(cfg.DEV)
+			preds = self.model(input_data.to(self.cfg.DEV))
+			lbls = label_data.to(self.cfg.DEV)
 
 			# === Loss === #
 			loss = self.loss(preds, lbls)
@@ -65,8 +69,8 @@ class Trainer:
 				acc = self.accuracy(preds, lbls)
 				ACC += acc
 
-		train_loss = LOSS/len(train_gen)
-		train_acc = ACC/len(train_gen)
+		train_loss = LOSS/len(self.train_gen)
+		train_acc = ACC/len(self.train_gen)
 
 		return train_loss, train_acc
 
@@ -75,19 +79,27 @@ class Trainer:
 
 		# === training loop === #
 		for epoch in range(self.cfg.TRAIN.NUM_EPOCHS):
-			train_loss, train_acc = train()
-			valid_loss, valid_acc = validate()
+			train_loss, train_acc = self.train()
+			valid_loss, valid_acc = self.validate()
 
 			# === save model === #
-			if epoch%cfg.TRAIN.SAVE_EVERY == 0:
-				self.save()
+			if epoch%self.cfg.TRAIN.SAVE_EVERY == 0:
+				self.save(epoch)
+
+			# === log model === #
+			self.writer.add_scalar('Learning Rate Schedule', self.optimizer.param_groups[0]['lr'] , global_step = epoch)
+
+			losses = {'Training': train_loss, 'Validation': valid_loss}
+			self.writer.add_scalars('Loss/{}'.format(self.cfg.LOSS.FN), losses , global_step = epoch)
+
+			self.writer.flush()
 			
 
-	def get_model(self, model):
+	def get_model(self):
 		if self.cfg.GPU_COUNT > 1:
-			return model.module
+			return self.model.module
 		else:
-			return model
+			return self.model
 
-	def save(self):
-		torch.save(self.get_model(model).state_dict(), "{}/weights/{}/Epoch_{}.pt".format(SAVE_PATH, self.cfg.MODEL_NAME, epoch))
+	def save(self, epoch):
+		torch.save(self.get_model().state_dict(), "{}/weights/{}/Epoch_{}.pt".format(SAVE_PATH, self.cfg.MODEL_NAME, epoch))

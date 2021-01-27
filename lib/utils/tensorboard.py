@@ -2,7 +2,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tensorboard import program
 from lib.utils.file import checkdir
 from lib.core.config import SAVE_PATH
-import pprint
+import pprint, re
 
 def get_writer(cfg):
 
@@ -10,7 +10,7 @@ def get_writer(cfg):
 	checkdir(path)
 
 	writer = SummaryWriter(path)
-	writer.add_text('config', pprint.pformat(cfg), 0)
+	writer.add_text('config', re.sub("\n", "  \n", pprint.pformat(cfg, width = 1)), 0)
 	writer.flush()
 
 	if cfg.START_TB:
