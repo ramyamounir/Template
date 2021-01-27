@@ -1,2 +1,4 @@
-out
-data
+out/
+data/
+__pycache__/
+*.pyc
