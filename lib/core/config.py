@@ -12,7 +12,10 @@ cfg.OUT_DIR = 'out'
 cfg.GPU_COUNT = 0
 cfg.DEV = 'cuda'
 cfg.START_TB = False
+
 cfg.DATASET = 'cifar'
+cfg.ARCH = 'cnn'
+cfg.TRAINER = 'trainer'
 
 cfg.TRAIN = CN()
 cfg.TRAIN.BATCH_PER_GPU = 16

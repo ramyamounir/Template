@@ -1,6 +1,7 @@
-import os, shutil
-
 def checkdir(path):
+
+	import os, shutil
+
 	if os.path.exists(path):
 		shutil.rmtree(path)
 	os.makedirs(path)
@@ -18,11 +19,27 @@ def extract(file, path):
 		tar.extractall(path = path)
 		tar.close()
 
-def unpickle(file, encoding="ASCII"):
+def read_file(file, encoding="ASCII"):
 
-    import pickle
+	if file.endswith(".pkl"):
+		import pickle
+		with open(file, 'rb') as f:
+			d = pickle.load(f, encoding=encoding)
 
-    with open(file, 'rb') as fo:
-        d = pickle.load(fo, encoding=encoding)
-        
-    return d
+	elif file.endswith(".json"):
+		import json
+		with open(file, 'rb') as f:
+			d = json.load(f)
+
+	return d
+
+def write_file(d, file):
+
+	if file.endswith(".pkl"):
+		import joblib
+		joblib.dump(d, file)
+
+	elif file.endswith(".json"):
+		import json
+		with open(file, 'w') as f:
+			json.dump(d, f)
