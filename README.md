@@ -65,8 +65,8 @@ python train.py -slurm -slurm_nnodes 2 -slurm_ngpus 8  -slurm_partition general 
 - To choose specific node names on SLURM, use the argument: ``` -slurm_nodelist GPU17,GPU18 ``` as an example. 
 - If running on a GPU with Tensor cores, using mixed precision models can speed up your training. Add the argument ``` -fp16 ``` to try it out. If it makes training unstable due to the loss of precision, dont use it :)
 - The template allows you to switch architectures, datasets and trainers easily by passing different arguments. For example, different architectures can be added to the lib/arch/[arch-name].py directory and passing the arguments as ``` -arch [arch-name] ``` or ``` -trainer [trainer-name] ``` or ``` -dataset [dataset-name] ```
-- The stdout and stderr will be printed in the shared dir. For Gaivi: /data/sarkar-vision/slurm_jobs/{USER}/[job_id]. We only print the first GPU output. If outside GAIVI, make sure to change the shared directory in lib/utils/distributed.py
-- if you find an bug in this template, open a new issue, or a pull request. Any collaboration is more than welcome!
+- The stdout and stderr will be printed in the shared directory. We only print the first GPU output. Make sure to change the shared directory in lib/utils/distributed.py depending on the cluster you are using.
+- if you find a bug in this template, open a new issue, or a pull request. Any collaboration is more than welcome!
 
 # License
 
