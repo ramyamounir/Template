@@ -1,5 +1,0 @@
-DEV: 'cuda'
-TRAIN:
-  BATCH_PER_GPU: 16
-  NUM_WORKERS: 4
-  SHUFFLE: True

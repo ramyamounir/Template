@@ -1,3 +1,17 @@
+# Copyright (c) Ramy Mounir.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import torch.nn as nn
 import torch.multiprocessing as mp
 from torch.utils.data import Dataset, DataLoader
@@ -100,6 +114,7 @@ def main():
 	
 	if args.slurm:
 
+		# Almost copy-paste from https://github.com/facebookresearch/deit/blob/main/run_with_submitit.py
 		args.output_dir = get_shared_folder() / "%j"
 		Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 		executor = submitit.AutoExecutor(folder=args.output_dir, slurm_max_num_timeout=30)

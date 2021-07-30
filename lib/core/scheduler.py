@@ -1,5 +1,6 @@
 import numpy as np
 
+# copy-paste from https://github.com/facebookresearch/dino/blob/main/utils.py
 def cosine_scheduler(base_value, final_value, epochs, niter_per_ep, warmup_epochs=0, start_warmup_value=0):
 	warmup_schedule = np.array([])
 	warmup_iters = warmup_epochs * niter_per_ep

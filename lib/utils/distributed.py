@@ -11,6 +11,12 @@ from pathlib import Path
 import submitit
 
 
+"""
+Misc functions.
+Mostly copy-paste from torchvision references or other public repos like DETR:
+https://github.com/facebookresearch/detr/blob/master/util/misc.py
+"""
+
 def setup_for_distributed(is_master):
 	"""
 	This function disables printing when not in master process
