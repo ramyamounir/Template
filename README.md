@@ -22,7 +22,7 @@ $ git push
 This template follows a modular approach where main components of the code (archcitecture, loss, scheduler, trainer, etc.) are organized into subdirectories.
 
 - The [train.py](train.py) script contrains all the arguments (parsed by argparse) and nodes/GPUS initializer (slurm or local). It also contains code for importing the dataset, model, loss function and passing them to the trainer function.
-- The [lib/trainer/trainer.py](lib/trainer/trainer.py) script defines the detailes of the training procedure.
+- The lib/trainer/trainer.py script defines the detailes of the training procedure.
 - The lib/dataset/[args.dataset].py imports data and defines the dataset function. Creading a data directory with soft link to the dataset is recommended, especially for testing on multiple datasets.
 - The lib/core/ directory contains definitions for loss, optimizer, scheduler functions.
 - The lib/util/ directory contains helper functions organized by file name. (i.e. helper functions for distributed training are placed in the lib/util/distributed.py file).
@@ -60,11 +60,12 @@ python train.py -slurm -slurm_nnodes 2 -slurm_ngpus 8  -slurm_partition general 
 ### Tips
 
 - To get more information about available arguments run: ```python train.py -h```
-- To automatically start tensorboard server as a different thread add the argument: ``` -tb ```
-- To overwrite model log files and start from scratch add the argument: ``` -reset ```, otherwise it will use the last weights as checkpoint and add continue writing to the same tensorboard log files.
-- To choose specific node names, use the argument: ``` -slurm_nodelist GPU17,GPU18 ``` as an example.
+- To automatically start tensorboard server as a different thread, add the argument: ``` -tb ```
+- To overwrite model log files and start from scratch add the argument: ``` -reset ```, otherwise it will use the last weights as checkpoint and add continue writing to the same tensorboard log files - if the same model name is used.
+- To choose specific node names on SLURM, use the argument: ``` -slurm_nodelist GPU17,GPU18 ``` as an example. 
 - If running on a GPU with Tensor cores, using mixed precision models can speed up your training. Add the argument ``` -fp16 ``` to try it out. If it makes training unstable due to the loss of precision, dont use it :)
 - The template allows you to switch architectures, datasets and trainers easily by passing different arguments. For example, different architectures can be added to the lib/arch/[arch-name].py directory and passing the arguments as ``` -arch [arch-name] ``` or ``` -trainer [trainer-name] ``` or ``` -dataset [dataset-name] ```
+- if you find an bug in this template, open a new issue, or a pull request. Any collaboration is more than welcome!
 
 # License
 
