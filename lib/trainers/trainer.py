@@ -1,107 +1,138 @@
 import torch
-from lib.core.config import SAVE_PATH
 from lib.utils.file import checkdir
-from tqdm import tqdm
+from lib.utils.tensorboard import get_writer, TBWriter
+from lib.core.scheduler import cosine_scheduler
+from lib.utils.distributed import MetricLogger
+from glob import glob
+import math
 
 class Trainer:
 
-	def __init__(self, cfg, writer, loader, model, loss, accuracy, optimizer, scheduler):
+	def __init__(self, args, loader, model, loss, optimizer):
 
-		self.writer = writer
-		(self.train_gen, self.valid_gen) = loader
+		self.args = args
+		self.train_gen = loader
 		self.model = model
 		self.loss = loss
-		self.accuracy = accuracy
 		self.optimizer = optimizer
-		self.scheduler = scheduler
-		self.cfg = cfg
+		self.fp16_scaler = torch.cuda.amp.GradScaler() if args.fp16 else None
 
-		checkdir("{}/weights/{}/".format(SAVE_PATH, self.cfg.MODEL_NAME))
+		# === TB writers === #
+		if self.args.main:	
 
-	def validate(self):
+			self.writer = get_writer(args)
+			self.lr_sched_writer = TBWriter(self.writer, 'scalar', 'Schedules/Learning Rate')			
+			self.loss_writer = TBWriter(self.writer, 'scalar', 'Loss/total')
 
-		LOSS, ACC = 0, 0
+			checkdir("{}/weights/{}/".format(args.out, self.args.model), args.reset)
 
-		for input_data, label_data in self.valid_gen:
 
-			with torch.no_grad():
+	def train_one_epoch(self, epoch, lr_schedule):
 
-				# === Forward pass === #
-				preds = self.model(input_data.to(self.cfg.DEV))
-				lbls = label_data.to(self.cfg.DEV)
+		metric_logger = MetricLogger(delimiter="  ")
+		header = 'Epoch: [{}/{}]'.format(epoch, self.args.epochs)
 
-				# === Loss === #
-				loss = self.loss(preds, lbls)
-				LOSS += loss
+		for it, (input_data, labels) in enumerate(metric_logger.log_every(self.train_gen, 10, header)):
 
-				# === Accuracy === #
-				with torch.no_grad():
-					acc = self.accuracy(preds, lbls)
-					ACC += acc
+			# === Global Iteration === #
+			it = len(self.train_gen) * epoch + it
 
-		valid_loss = LOSS/len(self.valid_gen)
-		valid_acc = ACC/len(self.valid_gen)
+			for i, param_group in enumerate(self.optimizer.param_groups):
+				param_group["lr"] = lr_schedule[it]
 
-		self.scheduler.step(valid_loss)
-
-		return valid_loss, valid_acc
-
-	def train(self):
-		
-		LOSS, ACC = 0, 0
-
-		for input_data, label_data in self.train_gen:
+			# === Inputs === #
+			input_data, labels = input_data.cuda(non_blocking=True), labels.cuda(non_blocking=True)
 
 			# === Forward pass === #
-			preds = self.model(input_data.to(self.cfg.DEV))
-			lbls = label_data.to(self.cfg.DEV)
+			with torch.cuda.amp.autocast(self.args.fp16):
+				preds = self.model(input_data)
+				loss = self.loss(preds, labels)
 
-			# === Loss === #
-			loss = self.loss(preds, lbls)
-			LOSS += loss
-
+			# Sanity Check
+			if not math.isfinite(loss.item()):
+				print("Loss is {}, stopping training".format(loss.item()), force=True)
+				sys.exit(1)
+			
 			# === Backward pass === #
 			self.model.zero_grad()
-			loss.backward()
-			self.optimizer.step()
 
-			# === Accuracy === #
-			with torch.no_grad():
-				acc = self.accuracy(preds, lbls)
-				ACC += acc
+			if self.args.fp16:
+				self.fp16_scaler.scale(loss).backward()
+				self.fp16_scaler.step(self.optimizer)
+				self.fp16_scaler.update()
+			else:
+				loss.backward()
+				self.optimizer.step()
 
-		train_loss = LOSS/len(self.train_gen)
-		train_acc = ACC/len(self.train_gen)
 
-		return train_loss, train_acc
+			# === Logging === #
+			torch.cuda.synchronize()
+			metric_logger.update(loss=loss.item())
+
+			if self.args.main:
+				self.loss_writer(metric_logger.meters['loss'].value, it)
+				self.lr_sched_writer(self.optimizer.param_groups[0]["lr"], it)
+
+
+		metric_logger.synchronize_between_processes()
+		print("Averaged stats:", metric_logger)
 
 
 	def fit(self):
 
-		# === training loop === #
-		for epoch in tqdm(range(self.cfg.TRAIN.NUM_EPOCHS)):
-			train_loss, train_acc = self.train()
-			valid_loss, valid_acc = self.validate()
+		# === Resume === #
+		self.load_if_available()
 
+		# === Schedules === #
+		lr_schedule = cosine_scheduler(
+							base_value = self.args.lr_start * (self.args.batch_per_gpu * self.args.world_size) / 256.,
+							final_value = self.args.lr_end,
+							epochs = self.args.epochs,
+							niter_per_ep = len(self.train_gen),
+							warmup_epochs= self.args.lr_warmup,
+		)
+
+		# === training loop === #
+		for epoch in range(self.start_epoch, self.args.epochs):
+
+			self.train_gen.sampler.set_epoch(epoch)
+			self.train_one_epoch(epoch, lr_schedule)
 
 			# === save model === #
-			if epoch%self.cfg.TRAIN.SAVE_EVERY == 0:
+			if self.args.main and epoch%self.args.save_every == 0:
 				self.save(epoch)
 
-			# === log model === #
-			self.writer.add_scalar('Learning Rate Schedule', self.optimizer.param_groups[0]['lr'] , global_step = epoch)
+	def load_if_available(self):
 
-			losses = {'Training': train_loss, 'Validation': valid_loss}
-			self.writer.add_scalars('Loss/{}'.format(self.cfg.LOSS.FN), losses , global_step = epoch)
+		ckpts = sorted(glob(f'{self.args.out}/weights/{self.args.model}/Epoch_*.pth'))
 
-			self.writer.flush()
-			
+		if len(ckpts) >0:
+			ckpt = torch.load(ckpts[-1], map_location='cpu')
+			self.start_epoch = ckpt['epoch']
+			self.model.load_state_dict(ckpt['model'])
+			self.optimizer.load_state_dict(ckpt['optimizer'])
+			if self.args.fp16: self.fp16_scaler.load_state_dict(ckpt['fp16_scaler'])
+			print("Loaded ckpt: ", ckpts[-1])
 
-	def get_model(self):
-		if self.cfg.GPU_COUNT > 1:
-			return self.model.module
 		else:
-			return self.model
+			self.start_epoch = 0
+			print("Starting from scratch")
+
 
 	def save(self, epoch):
-		torch.save(self.get_model().state_dict(), "{}/weights/{}/Epoch_{}.pt".format(SAVE_PATH, self.cfg.MODEL_NAME, epoch))
+
+		if self.args.fp16:
+			state = dict(epoch=epoch+1, 
+						model=self.model.state_dict(), 
+						optimizer=self.optimizer.state_dict(), 
+						fp16_scaler = self.fp16_scaler.state_dict(),
+						args = self.args
+					)
+		else:
+			state = dict(epoch=epoch+1, 
+						model=self.model.state_dict(), 
+						optimizer=self.optimizer.state_dict(),
+						args = self.args
+					)
+
+		torch.save(state, "{}/weights/{}/Epoch_{}.pth".format(self.args.out, self.args.model, str(epoch).zfill(3) ))

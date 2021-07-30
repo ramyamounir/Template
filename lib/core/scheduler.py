@@ -1,20 +1,23 @@
-import torch.optim.lr_scheduler as Sched
+import numpy as np
 
-class CustomScheduler(object):
+def cosine_scheduler(base_value, final_value, epochs, niter_per_ep, warmup_epochs=0, start_warmup_value=0):
+	warmup_schedule = np.array([])
+	warmup_iters = warmup_epochs * niter_per_ep
+	if warmup_epochs > 0:
+		warmup_schedule = np.linspace(start_warmup_value, base_value, warmup_iters)
 
-	def __init__(self, optimizer, cfg):
+	iters = np.arange(epochs * niter_per_ep - warmup_iters)
+	schedule = final_value + 0.5 * (base_value - final_value) * (1 + np.cos(np.pi * iters / len(iters)))
 
-		self.optimizer = optimizer
+	schedule = np.concatenate((warmup_schedule, schedule))
+	assert len(schedule) == epochs * niter_per_ep
+	return schedule
 
-	def step(self):
-		pass
+def warmup_scheduler(base_value, final_value, epochs, niter_per_ep, warmup_epochs=10):
 
+	warmup_schedule = np.linspace(base_value, final_value, warmup_epochs * niter_per_ep)
+	schedule = np.ones((epochs - warmup_epochs) * niter_per_ep) * final_value
 
-def get_scheduler(optimizer, cfg):
-	sched_fns = {
-		'step': Sched.StepLR(optimizer, step_size = cfg.SCHED.STEP, gamma=cfg.SCHED.GAMMA),
-		'reduceonplateau': Sched.ReduceLROnPlateau(optimizer, mode='min', factor=cfg.SCHED.GAMMA, patience=cfg.SCHED.PATIENCE),
-		'custom': CustomScheduler(optimizer, cfg)
-	}
-
-	return sched_fns.get(cfg.SCHED.FN, "Invalid Scheduler")
+	schedule = np.concatenate((warmup_schedule, schedule))
+	assert len(schedule) == epochs * niter_per_ep
+	return schedule

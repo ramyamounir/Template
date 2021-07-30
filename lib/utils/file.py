@@ -1,10 +1,13 @@
-def checkdir(path):
+def checkdir(path, reset = True):
 
 	import os, shutil
 
 	if os.path.exists(path):
-		shutil.rmtree(path)
-	os.makedirs(path)
+		if reset:
+			shutil.rmtree(path)
+			os.makedirs(path)
+	else:
+		os.makedirs(path)
 
 def extract(file, path):
 	
@@ -43,3 +46,17 @@ def write_file(d, file):
 		import json
 		with open(file, 'w') as f:
 			json.dump(d, f)
+
+
+def bool_flag(s):
+		"""
+		Parse boolean arguments from the command line.
+		"""
+		FALSY_STRINGS = {"off", "false", "0"}
+		TRUTHY_STRINGS = {"on", "true", "1"}
+		if s.lower() in FALSY_STRINGS:
+			return False
+		elif s.lower() in TRUTHY_STRINGS:
+			return True
+		else:
+			raise argparse.ArgumentTypeError("invalid value for a boolean flag")
