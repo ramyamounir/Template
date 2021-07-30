@@ -62,7 +62,7 @@ def init_dist_node(args):
 		cmd = 'scontrol show hostnames ' + os.getenv('SLURM_JOB_NODELIST')
 		stdout = subprocess.check_output(cmd.split())
 		host_name = stdout.decode().splitlines()[0]
-		args.dist_url = f'tcp://{host_name}:{random.randint(49152,65535)}'
+		args.dist_url = f'tcp://{host_name}:{args.port}'
 
 		# distributed parameters
 		args.rank = int(os.getenv('SLURM_NODEID')) * args.ngpus_per_node
@@ -74,7 +74,7 @@ def init_dist_node(args):
 		args.ngpus_per_node = torch.cuda.device_count()
 
 		args.rank = 0
-		args.dist_url = f'tcp://localhost:{random.randint(49152,65535)}'
+		args.dist_url = f'tcp://localhost:{args.port}'
 		args.world_size = args.ngpus_per_node
 
 def init_dist_gpu(gpu, args):

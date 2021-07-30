@@ -21,7 +21,7 @@ import argparse
 from lib.utils.file import bool_flag
 from lib.utils.distributed import init_dist_node, init_dist_gpu, get_shared_folder
 
-import submitit
+import submitit, random
 from pathlib import Path
 
 
@@ -87,7 +87,7 @@ def parse_args():
 						help='num of gpus per node')
 	parser.add_argument('-slurm_nnodes', type=int, default = 2,
 						help='number of nodes')
-	parser.add_argument('-slurm_nodeslist', default = None,
+	parser.add_argument('-slurm_nodelist', default = None,
 						help='slurm nodeslist. i.e. "GPU17,GPU18"')
 	parser.add_argument('-slurm_partition', type=str, default = "general",
 						help='slurm partition')
@@ -111,6 +111,7 @@ class SLURM_Trainer(object):
 def main():
 
 	args = parse_args()
+	args.port = random.randint(49152,65535)
 	
 	if args.slurm:
 
@@ -129,7 +130,7 @@ def main():
 			slurm_partition=args.slurm_partition
 		)
 
-		if args.slurm_nodeslist:
+		if args.slurm_nodelist:
 			executor.update_parameters(slurm_additional_parameters = {"nodelist": f'{args.slurm_nodelist}' })
 
 		executor.update_parameters(name=args.model)
