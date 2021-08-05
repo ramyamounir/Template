@@ -35,10 +35,13 @@ def get_writer(args):
 	writer.flush()
 
 	if args.tb:
-		tb = program.TensorBoard()
-		tb.configure(argv=[None, '--logdir', path])
-		url = tb.launch()
-		print("Tensorboard launched at {}".format(url))
+		def start_tb():
+			import subprocess
+			command = ["tensorboard", "--samples_per_plugin", "images=0", "--logdir", path]
+			subprocess.call(command)
+
+		import threading
+		threading.Thread(target=start_tb).start()
 
 	return writer
 
