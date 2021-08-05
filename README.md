@@ -33,28 +33,28 @@ This template follows a modular approach where the main components of the code (
 
 Try the following example
 ```
-python train.py -gpus 0 -model test
+python train.py -gpus 0
 ```
 
 ## For single node, multi GPU training:
 
 Try the following example
 ```
-python train.py -gpus 0,1,2 -model test
+python train.py -gpus 0,1,2
 ```
 
 ## For single node, multi GPU training on SLURM:
 
 Try the following example
 ```
-python train.py -slurm -slurm_nnodes 1 -slurm_ngpus 4 -slurm_partition general  -model test
+python train.py -slurm -slurm_nnodes 1 -slurm_ngpus 4 -slurm_partition general
 ```
 
 ## For multi node, multi GPU training on SLURM:
 
 Try the following example
 ```
-python train.py -slurm -slurm_nnodes 2 -slurm_ngpus 8  -slurm_partition general  -model test
+python train.py -slurm -slurm_nnodes 2 -slurm_ngpus 8  -slurm_partition general
 ```
 
 ### Tips
