@@ -1,0 +1,4 @@
+model: name
+lr_start: 1e-10
+arch: mlp
+gpus: 1

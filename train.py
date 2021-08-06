@@ -21,7 +21,7 @@ import argparse
 from lib.utils.file import bool_flag
 from lib.utils.distributed import init_dist_node, init_dist_gpu, get_shared_folder
 
-import submitit, random
+import submitit, random, sys
 from pathlib import Path
 
 
@@ -44,6 +44,8 @@ def parse_args():
 						help='Start TensorBoard')
 	parser.add_argument('-gpus', type=str, default="0",
 						help='GPUs list, only works if not on slurm')
+	parser.add_argument('-cfg', type =str,
+						help='Configuration file')
 
 	# === Dataset === #
 	parser.add_argument('-dataset', type=str, default = 'random',
@@ -94,7 +96,21 @@ def parse_args():
 	parser.add_argument('-slurm_timeout', type=int, default = 2800,
 						help='slurm timeout minimum, reduce if running on the "Quick" partition')
 
+
 	args = parser.parse_args()
+
+	# === Read CFG File === #
+	if args.cfg:
+		with open(args.cfg, 'r') as f:
+			import ruamel.yaml as yaml
+			yml = yaml.safe_load(f)
+
+		# update values from cfg file only if not passed in cmdline
+		cmd = [c[1:] for c in sys.argv if c[0]=='-']
+		for k,v in yml.items():
+			if k not in cmd:
+				args.__dict__[k] = v
+
 	return args
 
 
