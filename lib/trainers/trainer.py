@@ -43,53 +43,53 @@ class Trainer:
 
     def train_one_epoch(self, epoch, lr_schedule):
 
-            metric_logger = MetricLogger(delimiter="  ")
-            header = 'Epoch: [{}/{}]'.format(epoch, self.args.epochs)
+        metric_logger = MetricLogger(delimiter="  ")
+        header = 'Epoch: [{}/{}]'.format(epoch, self.args.epochs)
 
-            for it, (input_data, labels) in enumerate(metric_logger.log_every(self.train_gen, 10, header)):
+        for it, (input_data, labels) in enumerate(metric_logger.log_every(self.train_gen, 10, header)):
 
-                # === Global Iteration === #
-                it = len(self.train_gen) * epoch + it
+            # === Global Iteration === #
+            it = len(self.train_gen) * epoch + it
 
-                for i, param_group in enumerate(self.optimizer.param_groups):
-                    param_group["lr"] = lr_schedule[it]
+            for i, param_group in enumerate(self.optimizer.param_groups):
+                param_group["lr"] = lr_schedule[it]
 
-                # === Inputs === #
-                input_data, labels = input_data.cuda(non_blocking=True), labels.cuda(non_blocking=True)
+            # === Inputs === #
+            input_data, labels = input_data.cuda(non_blocking=True), labels.cuda(non_blocking=True)
 
-                # === Forward pass === #
-                with torch.cuda.amp.autocast(self.args.fp16):
-                    preds = self.model(input_data)
-                    loss = self.loss(preds, labels)
+            # === Forward pass === #
+            with torch.cuda.amp.autocast(self.args.fp16):
+                preds = self.model(input_data)
+                loss = self.loss(preds, labels)
 
-                # Sanity Check
-                if not math.isfinite(loss.item()):
-                    print("Loss is {}, stopping training".format(loss.item()), force=True)
-                    sys.exit(1)
-                
-                # === Backward pass === #
-                self.model.zero_grad()
+            # Sanity Check
+            if not math.isfinite(loss.item()):
+                print("Loss is {}, stopping training".format(loss.item()), force=True)
+                sys.exit(1)
+            
+            # === Backward pass === #
+            self.model.zero_grad()
 
-                if self.args.fp16:
-                    self.fp16_scaler.scale(loss).backward()
-                    self.fp16_scaler.step(self.optimizer)
-                    self.fp16_scaler.update()
-                else:
-                    loss.backward()
-                    self.optimizer.step()
-
-
-                # === Logging === #
-                torch.cuda.synchronize()
-                metric_logger.update(loss=loss.item())
-
-                if self.args.main:
-                    self.loss_writer(metric_logger.meters['loss'].value, it)
-                    self.lr_sched_writer(self.optimizer.param_groups[0]["lr"], it)
+            if self.args.fp16:
+                self.fp16_scaler.scale(loss).backward()
+                self.fp16_scaler.step(self.optimizer)
+                self.fp16_scaler.update()
+            else:
+                loss.backward()
+                self.optimizer.step()
 
 
-            metric_logger.synchronize_between_processes()
-            print("Averaged stats:", metric_logger)
+            # === Logging === #
+            torch.cuda.synchronize()
+            metric_logger.update(loss=loss.item())
+
+            if self.args.main:
+                self.loss_writer(metric_logger.meters['loss'].value, it)
+                self.lr_sched_writer(self.optimizer.param_groups[0]["lr"], it)
+
+
+        metric_logger.synchronize_between_processes()
+        print("Averaged stats:", metric_logger)
 
 
     def fit(self):
