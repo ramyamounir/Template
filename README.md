@@ -1,4 +1,4 @@
-# Desription
+# Description
 
 This is a template repository, which can be used to initialize new repositories for deep learning fast prototyping. The template allows training for single-node single-GPU models, single-node multi-GPU models, or multi-node multi-GPU models with SLURM. Checkpointing and auto-requeuing are supported on slurm as well.
 
